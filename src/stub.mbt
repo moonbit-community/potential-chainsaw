@@ -29,11 +29,18 @@ async fn top(
   _request : @types.IncomingRequest,
   response_out : @types.ResponseOutparam
 ) -> Unit! {
+  // Send request
+  let request = @http.request!("example.com", path="/", scheme=Https)
+  let response = @http.fetch!!(request)
+  let body = response.consume().unwrap()
+  let content = @http.text(body).0.await!!()
+  response.drop()
+  // Send response
   let response = @http.response!(200)
   let outgoing_body = response.body().unwrap()
   response_out.set(Ok(response))
   let outgoing_stream = outgoing_body.write().unwrap()
-  @io.println!!("Hello World!", stream=outgoing_stream)
+  @io.println!!(content, stream=outgoing_stream)
   outgoing_stream.drop()
   outgoing_body.finish(None).unwrap_or_error!()
 }

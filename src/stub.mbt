@@ -26,12 +26,16 @@ pub fn handle(
 
 ///|
 async fn top(
-  request : @types.IncomingRequest,
+  _request : @types.IncomingRequest,
   response_out : @types.ResponseOutparam
 ) -> Unit! {
-  let body = request.consume().unwrap()
-  request.drop()
+  // Send request
+  let request = @http.request!("example.com", path="/", scheme=Https)
+  let response = @http.fetch!(request)
+  let body = response.consume().unwrap()
   let content = @http.text(body).0.await!()
+  response.drop()
+  // Send response
   let response = @http.response!(200)
   let outgoing_body = response.body().unwrap()
   response_out.set(Ok(response))

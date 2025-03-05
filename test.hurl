@@ -2,4 +2,4 @@ GET http://localhost:8080
 `Hello Everyone`
 HTTP 200
 [Asserts]
-body contains "Hello Everyone"
+body contains "Example Domain"

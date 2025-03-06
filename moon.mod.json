@@ -4,7 +4,8 @@
   "deps": {
     "peter-jerry-ye/wasi-imports": "0.1.4",
     "peter-jerry-ye/io": "0.2.1",
-    "peter-jerry-ye/async": "0.1.1"
+    "peter-jerry-ye/async": "0.1.1",
+    "peter-jerry-ye/spin-imports": "0.1.0"
   },
   "license": "Apache 2.0",
   "source": "src"

@@ -29,10 +29,7 @@ async fn top(
   request : @types.IncomingRequest,
   response_out : @types.ResponseOutparam
 ) -> Unit! {
-  let token = Map::from_array(@environment.get_environment()).get(
-    "OPENAI_API_KEY",
-  )
-  guard token is Some(token) else { fail!("OPENAI_API_KEY is not set") }
+  let token = @variables.get("openai_api_key").unwrap_or_error!()
   // Get request
   let body = request.consume().unwrap()
   let content = @http.text(body).0.await!!()

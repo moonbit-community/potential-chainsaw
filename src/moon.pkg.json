@@ -24,6 +24,7 @@
     "peter-jerry-ye/io/http",
     "peter-jerry-ye/wasi-imports/interface/wasi/io/streams",
     "peter-jerry-ye/wasi-imports/interface/wasi/cli/environment",
-    "moonbitlang/x/encoding"
+    "moonbitlang/x/encoding",
+    "peter-jerry-ye/spin-imports/interface/fermyon/spin/variables"
   ]
 }

@@ -26,15 +26,52 @@ pub fn handle(
 
 ///|
 async fn top(
-  _request : @types.IncomingRequest,
+  request : @types.IncomingRequest,
   response_out : @types.ResponseOutparam
 ) -> Unit! {
+  let token = Map::from_array(@environment.get_environment()).get(
+    "OPENAI_API_KEY",
+  )
+  guard token is Some(token) else { fail!("OPENAI_API_KEY is not set") }
+  // Get request
+  let body = request.consume().unwrap()
+  let content = @http.text(body).0.await!!()
+  request.drop()
+  // Prepare payload
+  let payload : Json = {
+    "model": "deepseek/deepseek-chat",
+    "messages": [
+      { "role": "system", "content": "You are a helpful assistant." },
+      { "role": "user", "content": String(content) },
+    ],
+  }
   // Send request
-  let request = @http.request!("example.com", path="/", scheme=Https)
+  let request = @http.request!(
+    "openrouter.ai",
+    path="/api/v1/chat/completions",
+    scheme=Https,
+    method_=Post,
+    headers=@http.headers({
+      "Content-Type": ["application/json"],
+      "Authorization": [@encoding.encode(UTF8, "Bearer \{token}")],
+    }),
+  )
+  let body = request.body().unwrap()
+  let output_stream = body.write().unwrap()
+  @io.println!!(payload.stringify(), stream=output_stream)
+  output_stream.drop()
+  body.finish(None).unwrap_or_error!()
   let response = @http.fetch!!(request)
   let body = response.consume().unwrap()
-  let content = @http.text(body).0.await!!()
+  let content = @http.json(body).0.await!!()
   response.drop()
+  guard content
+    is {
+      "choices": [{ "message": { "content": String(content), .. }, .. }],
+      ..
+    } else {
+    fail!("Unexpected response \{content}")
+  }
   // Send response
   let response = @http.response!(200)
   let outgoing_body = response.body().unwrap()

@@ -22,6 +22,10 @@
     "peter-jerry-ye/io/io",
     "peter-jerry-ye/async/loop",
     "peter-jerry-ye/io/http",
-    "peter-jerry-ye/wasi-imports/interface/wasi/io/streams"
+    "peter-jerry-ye/wasi-imports/interface/wasi/io/streams",
+    "peter-jerry-ye/utils/jwt",
+    "moonbitlang/x/encoding",
+    "peter-jerry-ye/wasi-imports/interface/wasi/clocks/wallClock",
+    "peter-jerry-ye/wasi-imports/interface/wasi/cli/environment"
   ]
 }

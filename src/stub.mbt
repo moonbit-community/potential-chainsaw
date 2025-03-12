@@ -26,14 +26,21 @@ pub fn handle(
 
 ///|
 async fn top(
-  _request : @types.IncomingRequest,
+  request : @types.IncomingRequest,
   response_out : @types.ResponseOutparam
 ) -> Unit! {
+  let headers = request.headers()
+  let entries = headers.entries()
+  let body = request.consume().unwrap()
+  headers.drop()
+  request.drop()
+  let json = @http.json(body).0.await!!()
+  @io.println!!("Request Headers:")
+  for entry in entries {
+    @io.print!!("\n\{entry.0}: ")
+    @io.write!!(entry.1, @io.stdout)
+  }
+  @io.println!!("\nContent: \{json.stringify()}")
   let response = @http.response!(200)
-  let outgoing_body = response.body().unwrap()
   response_out.set(Ok(response))
-  let outgoing_stream = outgoing_body.write().unwrap()
-  @io.println!!("Hello World!", stream=outgoing_stream)
-  outgoing_stream.drop()
-  outgoing_body.finish(None).unwrap_or_error!()
 }

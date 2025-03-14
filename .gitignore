@@ -1,2 +1,6 @@
 target/
 .mooncakes/
+.env.keys
+
+.DS_Store
+.spin

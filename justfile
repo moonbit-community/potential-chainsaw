@@ -1,11 +1,23 @@
+tool := "wasm-tools"
+component-embed := if tool == "wasm-tools" {
+    "component embed --encoding utf16 wit"
+} else {
+    "embed --string-encoding utf16 --wit wit"
+}
+component-new := if tool == "wasm-tools" {
+    "component new"
+} else {
+    "new"
+}
+
 serve target=("debug"): (build target)
     wasmtime serve target/server.wasm
 
 build target=("debug"):
     @echo 'Building targeting {{ target }}'
     moon build --target wasm --{{ target }}
-    wasm-tools component embed --encoding utf16 wit target/wasm/{{ target }}/build/http-server.wasm -o target/server.core.wasm
-    wasm-tools component new target/server.core.wasm -o target/server.wasm
+    {{ tool }} {{ component-embed }} target/wasm/{{ target }}/build/http-server.wasm -o target/server.core.wasm
+    {{ tool }} {{ component-new }} target/server.core.wasm -o target/server.wasm
 
 test:
     hurl --test test.hurl

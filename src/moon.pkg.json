@@ -26,6 +26,6 @@
     "peter-jerry-ye/utils/jwt",
     "moonbitlang/x/encoding",
     "peter-jerry-ye/wasi-imports/interface/wasi/clocks/wallClock",
-    "peter-jerry-ye/wasi-imports/interface/wasi/cli/environment"
+    "peter-jerry-ye/wasi-imports/interface/wasi/cli/environment",
   ]
 }

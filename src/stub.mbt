@@ -89,11 +89,10 @@ async fn top(
     token,
     username,
   )
+  let review = get_review!!(pull_request_message, pull_request_diff)
   @io.println!!(
-    #|=== Pull Request Message ==
-    $|\{pull_request_message}
-    #|=== Pull Request Changes (in diff format) ==
-    $|\{pull_request_diff}
+    #|=== Review ===
+    $|\{review}
     ,
   )
 }
@@ -166,5 +165,57 @@ async fn get_pr_diff(
   let body = response.consume().unwrap()
   let content = @http.text(body).0.await!!()
   response.drop()
+  content
+}
+
+///|
+async fn get_review(message : String, changes : String) -> String! {
+  guard Map::from_array(@environment.get_environment()).get("OPENAI_API_KEY")
+    is Some(token) else {
+    fail!("OPENAI_API_KEY is not set")
+  }
+  let system_msg =
+    #|You are a programmer conducting code review.
+    #|Based on the pull request message and changes, provide feedback.
+    #|
+    #|Point out at most three problems that you observe
+  let user_msg =
+    #|=== Pull Request Message ==
+    $|\{message}
+    #|=== Pull Request Changes (in diff format) ==
+    $|\{changes}
+  let payload : Json = {
+    "model": "deepseek/deepseek-chat",
+    "messages": [
+      { "role": "system", "content": String(system_msg) },
+      { "role": "user", "content": String(user_msg) },
+    ],
+  }
+  let request = @http.request!(
+    "openrouter.ai",
+    path="/api/v1/chat/completions",
+    scheme=Https,
+    method_=Post,
+    headers=@http.headers({
+      "Content-Type": ["application/json"],
+      "Authorization": [@encoding.encode(UTF8, "Bearer \{token}")],
+    }),
+  )
+  let body = request.body().unwrap()
+  let output_stream = body.write().unwrap()
+  @io.println!!(payload.stringify(), stream=output_stream)
+  output_stream.drop()
+  body.finish(None).unwrap_or_error!()
+  let response = @http.fetch!!(request)
+  let body = response.consume().unwrap()
+  let content = @http.json(body).0.await!!()
+  response.drop()
+  guard content
+    is {
+      "choices": [{ "message": { "content": String(content), .. }, .. }],
+      ..
+    } else {
+    fail!("Unexpected response \{content}")
+  }
   content
 }

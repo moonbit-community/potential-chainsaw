@@ -73,6 +73,7 @@ async fn top(
   guard environment["CLIENT_ID"] is Some(client_id)
   guard environment["PRIVATE_KEY"] is Some(private_key)
   guard environment["USER_NAME"] is Some(username)
+  guard environment["APP_ID"] is Some(app_id)
   let now = @wallClock.now().seconds
   let token = create_installation_access_token!!(
     installation.to_uint(),
@@ -90,11 +91,26 @@ async fn top(
     username,
   )
   let review = get_review!!(pull_request_message, pull_request_diff)
-  @io.println!!(
-    #|=== Review ===
-    $|\{review}
-    ,
+  let comment_id = get_comment_list!!(
+    owner,
+    repository,
+    pull_request.to_int64(),
+    token,
+    app_id,
+    username,
   )
+  if comment_id is Some(id) {
+    update_comment!!(owner, repository, id, review, token, username)
+  } else {
+    create_comment!!(
+      owner,
+      repository,
+      pull_request.to_int64(),
+      review,
+      token,
+      username,
+    )
+  }
 }
 
 ///|
@@ -218,4 +234,120 @@ async fn get_review(message : String, changes : String) -> String! {
     fail!("Unexpected response \{content}")
   }
   content
+}
+
+///|
+async fn get_comment_list(
+  owner : String,
+  repo : String,
+  issue_number : Int64,
+  token : String,
+  app_id : String,
+  username : String
+) -> Int64?! {
+  let request = @http.request?(
+    "api.github.com",
+    path="/repos/\{owner}/\{repo}/issues/\{issue_number}/comments",
+    headers=@http.headers({
+      "Accept": [b"application/vnd.github.v3+json"],
+      "Authorization": [@encoding.encode(UTF8, "token \{token}")],
+      "User-Agent": [@encoding.encode(UTF8, username)],
+    }),
+  ).unwrap()
+  let response = @http.fetch!!(request)
+  if response.status() != 200 {
+    let body = response.consume().unwrap()
+    let content = @http.text(body).0.await!!()
+    response.drop()
+    fail!("Failed to list issue comments. Reason: \{content}")
+  }
+  let body = response.consume().unwrap()
+  let json = @http.json(body).0.await!!()
+  response.drop()
+  guard json is Array(comments) else {
+    fail!("Failed to list issue comments. Unexpected response: \{json}")
+  }
+  for comment in comments {
+    if comment
+      is {
+        "performed_via_github_app": { "id": Number(github_app_id), .. },
+        "id": Number(comment_id),
+        ..
+      } &&
+      github_app_id.to_int64().to_string() == app_id {
+      return Some(comment_id.to_int64())
+    }
+  } else {
+    return None
+  }
+}
+
+///|
+async fn create_comment(
+  owner : String,
+  repo : String,
+  issue_number : Int64,
+  comment : String,
+  token : String,
+  username : String
+) -> Unit! {
+  let request = @http.request?(
+    "api.github.com",
+    path="/repos/\{owner}/\{repo}/issues/\{issue_number}/comments",
+    method_=Post,
+    headers=@http.headers({
+      "Accept": ["application/vnd.github.v3+json"],
+      "Authorization": [@encoding.encode(UTF8, "token \{token}")],
+      "X-Github-Api-Version": ["2022-11-28"],
+      "User-Agent": [@encoding.encode(UTF8, username)],
+    }),
+  ).unwrap()
+  let body = request.body().unwrap()
+  let output = body.write().unwrap()
+  @io.println!!(({ "body": String(comment) } : Json).stringify(), stream=output)
+  output.drop()
+  body.finish(None).unwrap()
+  let response = @http.fetch!!(request)
+  if response.status() != 201 {
+    let body = response.consume().unwrap()
+    let content = @http.text(body).0.await!!()
+    response.drop()
+    fail!("Failed to create comment. Reason: \{content}")
+  }
+  response.drop()
+}
+
+///|
+async fn update_comment(
+  owner : String,
+  repo : String,
+  comment_id : Int64,
+  comment : String,
+  token : String,
+  username : String
+) -> Unit! {
+  let request = @http.request?(
+    "api.github.com",
+    path="/repos/\{owner}/\{repo}/issues/comments/\{comment_id}",
+    method_=Patch,
+    headers=@http.headers({
+      "Accept": ["application/vnd.github.v3+json"],
+      "Authorization": [@encoding.encode(UTF8, "token \{token}")],
+      "X-Github-Api-Version": ["2022-11-28"],
+      "User-Agent": [@encoding.encode(UTF8, username)],
+    }),
+  ).unwrap()
+  let body = request.body().unwrap()
+  let output = body.write().unwrap()
+  @io.println!!(({ "body": String(comment) } : Json).stringify(), stream=output)
+  output.drop()
+  body.finish(None).unwrap()
+  let response = @http.fetch!!(request)
+  if response.status() != 200 {
+    let body = response.consume().unwrap()
+    let content = @http.text(body).0.await!!()
+    response.drop()
+    fail!("Failed to update comment. Reason: \{content}")
+  }
+  response.drop()
 }

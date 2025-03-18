@@ -11,7 +11,7 @@ component-new := if tool == "wasm-tools" {
 }
 
 serve target=("debug"): (build target)
-    wasmtime serve -S cli=y --env USER_NAME --env CLIENT_ID --env PRIVATE_KEY --env OPENAI_API_KEY target/server.wasm
+    wasmtime serve -S cli=y --env USER_NAME --env CLIENT_ID --env PRIVATE_KEY --env OPENAI_API_KEY --env APP_ID target/server.wasm
 
 build target=("debug"):
     @echo 'Building targeting {{ target }}'

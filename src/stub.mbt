@@ -82,15 +82,16 @@ async fn top(
     now,
     username,
   )
-  // Get the Pull Request's changes
-  let pull_request_diff = get_pr_diff!!(
-    owner,
-    repository,
-    pull_request.to_int64(),
-    token,
-    username,
-  )
-  let review = get_review!!(pull_request_message, pull_request_diff)
+  let review = @promise.spawn(async fn(_defer) {
+    let pull_request_diff = get_pr_diff!!(
+      owner,
+      repository,
+      pull_request.to_int64(),
+      token,
+      username,
+    )
+    get_review!!(pull_request_message, pull_request_diff)
+  })
   let comment_id = get_comment_list!!(
     owner,
     repository,
@@ -100,13 +101,13 @@ async fn top(
     username,
   )
   if comment_id is Some(id) {
-    update_comment!!(owner, repository, id, review, token, username)
+    update_comment!!(owner, repository, id, review.await!!(), token, username)
   } else {
     create_comment!!(
       owner,
       repository,
       pull_request.to_int64(),
-      review,
+      review.await!!(),
       token,
       username,
     )
@@ -219,9 +220,14 @@ async fn get_review(message : String, changes : String) -> String! {
   )
   let body = request.body().unwrap()
   let output_stream = body.write().unwrap()
-  @io.println!!(payload.stringify(), stream=output_stream)
-  output_stream.drop()
-  body.finish(None).unwrap_or_error!()
+  @promise.spawn(async fn(defer) {
+    defer(fn() {
+      output_stream.drop()
+      body.finish(None).unwrap()
+    })
+    @io.println!!(payload.stringify(), stream=output_stream)
+  })
+  |> ignore
   let response = @http.fetch!!(request)
   let body = response.consume().unwrap()
   let content = @http.json(body).0.await!!()
